@@ -1,0 +1,5 @@
+certifi~=2023.11.17
+pip~=22.3.1
+wheel~=0.38.4
+setuptools~=65.6.3
+requests~=2.31.0

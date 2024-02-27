@@ -1,3 +1,5 @@
+import time
+
 import requests
 import signal
 import sys
@@ -6,18 +8,32 @@ import ast
 import re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+SECONDS_IN_DAY = 86400  # Seconds in one day
+SECONDS_IN_MONTH = 30 * SECONDS_IN_DAY  # Seconds in a month
 
 class Storage:
-    cache = dict()
+    def __int__(self):
+        self.cache = {}
 
-    def add_to_cache(self):
-        pass
+    def add_to_cache(self, key, value, ttl_month=1):
+        """Adds value to cache with a key."""
+        ttl_seconds = ttl_month * SECONDS_IN_MONTH
+        self.cache[key] = {'value': value, 'expiry_time': time.time() + ttl_seconds}
 
-    def delete_partner(self):
-        pass
+    def delete_partner(self, key):
+        """Deletes value from cache by the key."""
+        if key in self.cache:
+            del self.cache[key]
 
-    def read_cache(self):
-        pass
+    def read_cache(self, key):
+        """Returns cache value by the key."""
+        if key in self.cache:
+            if time.time() < self.cache[key]['expiry_time']:
+                return self.cache[key]['value']
+        else:
+            del self.cache[key]
+        return None
+
 
 class ProjectProxy:
     def start_server(self):
