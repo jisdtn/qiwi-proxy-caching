@@ -11,8 +11,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 SECONDS_IN_DAY = 86400  # Seconds in one day
 SECONDS_IN_MONTH = 30 * SECONDS_IN_DAY  # Seconds in a month
 
+
 class Storage:
-    def __int__(self):
+    def __init__(self):
         self.cache = {}
 
     def add_to_cache(self, key, value, ttl_month=1):
@@ -36,6 +37,9 @@ class Storage:
 
 
 class ProjectProxy:
+    def __init__(self):
+        self.shutdown_requested = False
+
     def start_server(self):
         class ProxyHTTPRequestHandler(BaseHTTPRequestHandler):
             protocol_version = "HTTP/1.0"
@@ -64,17 +68,24 @@ class ProjectProxy:
                     self.end_headers()
                     return
 
-                body = (self.rfile.read(int(self.headers["content-length"]))).decode('UTF-8')
-                body = ast.literal_eval(body)
-                del body['id']
+                try:
+                    content_length = int(self.headers["content-length"])
+                    body = self.rfile.read(content_length).decode('UTF-8')
+                    body = ast.literal_eval(body)
+                    del body['id']
 
-                headers = dict(self.headers)
+                    headers = dict(self.headers)
+                    resp = requests_func(url, data=body, headers=headers)
 
-                resp = requests_func(url, data=body, headers=headers)
+                    self.send_response(resp.status_code)
+                    self.end_headers()
+                    self.wfile.write(resp.content)
 
-                self.send_response(resp.status_code)
-                self.end_headers()
-                self.wfile.write(resp.content)
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(str(e).encode())
 
             def _resolve_url(self):
                 parts = urllib.parse.urlparse(self.path)
@@ -88,12 +99,18 @@ class ProjectProxy:
 
         server_address = ('', 8000)
         self.httpd = HTTPServer(server_address, ProxyHTTPRequestHandler)
+        self._register_signals()
         self.httpd.serve_forever()
 
-def exit_now(signum, frame):
-    sys.exit(0)
+    def _register_signals(self):
+        signal.signal(signal.SIGTERM, self._shutdown_handler)
+        signal.signal(signal.SIGINT, self._shutdown_handler)
+
+    def _shutdown_handler(self, signum, frame):
+        print("Shutting down gracefully...")
+        self.shutdown_requested = True
+        self.httpd.shutdown()
 
 if __name__ == '__main__':
     proxy = ProjectProxy()
-    signal.signal(signal.SIGTERM, exit_now)
     proxy.start_server()
