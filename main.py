@@ -1,12 +1,11 @@
-import time
-
-import requests
-import signal
-import sys
-import urllib.parse
 import ast
 import re
+import signal
+import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import requests
 
 SECONDS_IN_DAY = 86400  # Seconds in one day
 SECONDS_IN_MONTH = 30 * SECONDS_IN_DAY  # Seconds in a month
@@ -19,7 +18,10 @@ class Storage:
     def add_to_cache(self, key, value, ttl_month=1):
         """Adds value to cache with a key."""
         ttl_seconds = ttl_month * SECONDS_IN_MONTH
-        self.cache[key] = {'value': value, 'expiry_time': time.time() + ttl_seconds}
+        self.cache[key] = {
+            'value': value,
+            'expiry_time': time.time() + ttl_seconds
+        }
 
     def delete_partner(self, key):
         """Deletes value from cache by the key."""
@@ -91,11 +93,14 @@ class ProjectProxy:
                 parts = urllib.parse.urlparse(self.path)
 
                 # get path without uuid in it
-                rx = re.compile(r'\b[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}\b')
+                rx = re.compile(
+                    r'\b[a-fA-F0-9]{8}-[a-fA-F0-9]'
+                    r'{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-'
+                    r'[a-fA-F0-9]{12}\b'
+                )
                 parts._replace(path=re.sub(rx, '', parts.path))
 
                 return parts.geturl()
-
 
         server_address = ('', 8000)
         self.httpd = HTTPServer(server_address, ProxyHTTPRequestHandler)
@@ -110,6 +115,7 @@ class ProjectProxy:
         print("Shutting down gracefully...")
         self.shutdown_requested = True
         self.httpd.shutdown()
+
 
 if __name__ == '__main__':
     proxy = ProjectProxy()
